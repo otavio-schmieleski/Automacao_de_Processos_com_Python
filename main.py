@@ -7,8 +7,8 @@ import psycopg2
 
 # CAMINHO DAS PASTAS PARA OS ARQUIVOS
 ROOT_ORIGIN = "C://Users//otavi//Downloads"
-ROOT_DESTINY = "C://Users//otavi//OneDrive//Documentos//Programacao-fullstack//Pipeline_python//CSV"
-ROOT_COMPANY_NAMES = "C://Users//otavi//OneDrive//Documentos//Programacao-fullstack//Pipeline_python//Company_names.csv"
+ROOT_DESTINY = "D://unimater//3º Período//Ciências de Dados//Pipeline_python//CSV"
+ROOT_COMPANY_NAMES = "D://unimater//3º Período//Ciências de Dados//Pipeline_python//Company_names.csv"
 list_name = []
 
 # OBTENDO O NOME DOS TITULOS DAS EMPRESAS
@@ -47,17 +47,17 @@ def move_file(root_origin,root_destiny):
 # CHAMANDO A FUNCAO MOVER TITULO PARA MOVER OS TITULOS PARA A PASTA DESTINO
 move_file(ROOT_ORIGIN,ROOT_DESTINY)
 
-
+# CONECTANDO COM O BANCO DE DADOS
 conn = psycopg2.connect(
     host="localhost",
     database="Mercado_Financeiro",
     user="postgres",
-    password="schmieleski1!",
+    password="INSIRA SUA SENHA",
     port="5432"
 )
     
-
-def create_table(name):
+# CRIANDO AS TABELAS DE ACORDO COM OS TITULOS
+def create_table(name, name_file):
     table = f"""
         CREATE TABLE IF NOT EXISTS {name} (
             date DATE,
@@ -74,15 +74,20 @@ def create_table(name):
     cur.execute(table)
     conn.commit()
 
+    # INSERINDO OS DADOS DENTRO DAS TABELAS
     def load_data(cur,file_path):
         with open (file_path,'r') as f:
             next(f)
-            cur.copy_expert(sql="COPY itau FROM STDIN CSV HEADER", file=f)
+            cur.copy_expert(sql=f"COPY {name} FROM STDIN CSV HEADER", file=f)
             conn.commit()
         print('Dados inseridos com suceso!')
     
-    ROOT_FILE_PATH = f'.//CSV//{name}.csv'
+    
+    ROOT_FILE_PATH = f'.//CSV//{name_file}.csv'
     load_data(cur,ROOT_FILE_PATH)
 
+# CHAMANDO A FUNCAO PARA CRIAR AS TABELAS DE ACORDO COM OS TITULOS
 for name in list_name:
-    create_table(name)
+    create_table(name.split('.')[0], name.split('\n')[0])
+    
+    
