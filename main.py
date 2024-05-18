@@ -3,20 +3,86 @@ import time
 import pyautogui
 import os
 import shutil
+import psycopg2
 
-# drive = webdriver.Chrome()
-# drive.get('https://br.financas.yahoo.com/quote/%5EBVSP?p=%5EBVSP')
-# time.sleep(10)
-# drive.find_element('xapth','//*[@id="ybar-sbq"]').click()
-# drive.find_element('xpath','//*[@id="ybar-sbq"]').send_keys('ITUB3.SA')
-# time.sleep(60)
+# CAMINHO DAS PASTAS PARA OS ARQUIVOS
+ROOT_ORIGIN = "C://Users//otavi//Downloads"
+ROOT_DESTINY = "C://Users//otavi//OneDrive//Documentos//Programacao-fullstack//Pipeline_python//CSV"
+ROOT_COMPANY_NAMES = "C://Users//otavi//OneDrive//Documentos//Programacao-fullstack//Pipeline_python//Company_names.csv"
+list_name = []
 
-ROOT_ORIGINAL = "C://Users//otavi//Downloads"
-ROOT_DESTINO = "D://unimater//3º Período//Ciências de Dados//Pipeline_python//CSV"
+# OBTENDO O NOME DOS TITULOS DAS EMPRESAS
+with open(ROOT_COMPANY_NAMES, 'r', encoding='utf-8') as file:
+    for i, name in enumerate(file):
+        if i == 0:
+            continue
+        list_name.append(name)
 
-arquivos = os.listdir(ROOT_ORIGINAL)
-for arquivo in arquivos:
-    if arquivo.endswith('.csv'):
-        caminho_original = os.path.join(ROOT_ORIGINAL, arquivo)
-        caminho_destino = os.path.join(ROOT_DESTINO, arquivo)
-        shutil.move(caminho_original,caminho_destino)
+# AUTOMATIZACAO PARA DOWLOAND DOS CSV DOS TITULOS DO MERCADO FINANCEIRO
+def dowloand_titulos(name):
+    drive = webdriver.Chrome()
+    drive.get(f'https://br.financas.yahoo.com/quote/{name}/history')
+    time.sleep(5)
+    pyautogui.press('tab', 2)
+    pyautogui.press('enter')
+    drive.find_element('xpath','//*[@id="Col1-1-HistoricalDataTable-Proxy"]/section/div[1]/div[1]/div[1]').click()
+    drive.find_element('xpath','//*[@id="dropdown-menu"]/div/ul[2]/li[4]/button').click()
+    drive.find_element('xpath','//*[@id="Col1-1-HistoricalDataTable-Proxy"]/section/div[1]/div[1]/button').click()
+    drive.find_element('xpath','//*[@id="Col1-1-HistoricalDataTable-Proxy"]/section/div[1]/div[2]/span[2]/a').click()
+    time.sleep(5)
+
+# CHAMANDO A FUNCAO PARA FAZER DOWLOAND DOS TITULOS AUTOMATICAMENTE PASSANDO OS NOMES
+for name in list_name:
+    dowloand_titulos(name)
+
+# MOVENDO OS ARQUIVOS BAIXADO PARA PASTA CSV
+def move_file(root_origin,root_destiny):
+    arquivos = os.listdir(root_origin)
+    for arquivo in arquivos:
+        if arquivo.endswith('.csv'):
+            caminho_original = os.path.join(root_origin, arquivo)
+            caminho_destino = os.path.join(root_destiny, arquivo)
+            shutil.move(caminho_original,caminho_destino)
+
+# CHAMANDO A FUNCAO MOVER TITULO PARA MOVER OS TITULOS PARA A PASTA DESTINO
+move_file(ROOT_ORIGIN,ROOT_DESTINY)
+
+
+conn = psycopg2.connect(
+    host="localhost",
+    database="Mercado_Financeiro",
+    user="postgres",
+    password="schmieleski1!",
+    port="5432"
+)
+    
+
+def create_table(name):
+    table = f"""
+        CREATE TABLE IF NOT EXISTS {name} (
+            date DATE,
+            open NUMERIC,
+            high NUMERIC,
+            low NUMERIC,
+            close NUMERIC,
+            adj_close NUMERIC,
+            volume BIGINT
+        )
+
+    """
+    cur = conn.cursor()
+    cur.execute(table)
+    conn.commit()
+
+    def load_data(cur,file_path):
+        with open (file_path,'r') as f:
+            next(f)
+            cur.copy_expert(sql="COPY itau FROM STDIN CSV HEADER", file=f)
+            conn.commit()
+        print('Dados inseridos com suceso!')
+    
+    ROOT_FILE_PATH = f'.//CSV//{name}.csv'
+    load_data(cur,ROOT_FILE_PATH)
+
+for name in list_name:
+    create_table(name)
